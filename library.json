@@ -1,0 +1,12 @@
+{
+    "name": "IrqScheduler",
+    "keywords": "Scheduler, IRQ",
+    "description": "A fully implemented LinkedList (int, float, objects, Lists or Wales) made to work with Arduino projects",
+    "repository":
+    {
+        "type": "git",
+        "url": "https://github.com/achest/irqscheduler.git"
+    },
+    "frameworks": "arduino",
+    "platforms": "*"
+}

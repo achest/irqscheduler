@@ -36,6 +36,7 @@
 
 #include "LinkedList.h"
 
+//#define  DEBUG
 
 extern "C" {
 	typedef void (*SchedulerTask)(void);
@@ -66,23 +67,32 @@ public:
 	boolean addTask(SchedulerTask callback , long time) {
 		
 		long now = micros();
-		Task * newtask = new Task (callback,now+time); 
+		Task * newtask = new Task (callback,now+time*1000); 
+		
+		#ifdef DEBUG
+				printTime();
+				Serial.print("addTask:Task "); 
+				Serial.print(time*1000); 
+
+		#endif
 		
 		if (taskList.size() == 0) {
 			taskList.add(newtask);
-			initTimer(time);
+			initTimer(time*1000);
 			 #ifdef DEBUG
-				Serial.print("\n addTask:firstTask"); 
+				printTime();
+				Serial.print("addTask:firstTask"); 
 			#endif
 		}
 		boolean ready=false;
 		for (int i = 0; i < taskList.size(); i++ ) {
 			Task *schedTask = taskList.get(i);
-			if (schedTask->getScheduledtime() > now+time ) {
+			if (schedTask->getScheduledtime() > now+time*1000 ) {
 				taskList.add(i, newtask); 
 				ready = true;
 			 #ifdef DEBUG
-				Serial.print("\n addTask:ready"); 
+				printTime();
+				Serial.print("addTask:ready"); 
 			#endif
 
 				break;
@@ -92,7 +102,8 @@ public:
 		if (!ready ) {
 			taskList.add(newtask);
 		    #ifdef DEBUG
-				Serial.print("\n addTask:addEnd"); 
+				printTime();
+				Serial.print("addTask:addEnd"); 
 			#endif
 
 		}
@@ -103,11 +114,25 @@ public:
     
     void isrCallback() {
 		
+		if (taskList.size()== 0) {
+			#ifdef DEBUG
+				printTime();
+				Serial.print("isrCallback:stopTimer, Detatch intterupt"); 
+			#endif
+			#ifndef ESP8266
+				TCCR1B &= ~(_BV(CS10) | _BV(CS11) | _BV(CS12));          // clears all clock selects bits
+			#else
+				timer0_detachInterrupt();
+			#endif	
+			return;
+		}
+		
 		Task * t = taskList.get(0);
 		taskList.remove(0);
-		    #ifdef DEBUG
-			Serial.print("\n isrCallback:callTask"); 
-			#endif
+		#ifdef DEBUG
+			printTime();
+			Serial.print("isrCallback:callTask"); 
+		#endif
 		t->callback ();
 
 		if (taskList.size()>=1) {
@@ -115,17 +140,20 @@ public:
 			long now = micros();
 			if (nextTask->getScheduledtime()-now > 0) { 
 				
-				setPeriod (nextTask->getScheduledtime()-now);
+				setPeriod (nextTask->getScheduledtime()- now);
 				#ifdef DEBUG
-					Serial.print("\n isrCallback:setPeriod"); 
+					printTime();
+					Serial.print("isrCallback:setPeriod"); 
 				#endif
 			} else { 		    
 				#ifdef DEBUG
-					Serial.print("\n isrCallback:too late"); 
+					printTime();
+					Serial.print(" isrCallback:too late"); 
 				#endif
 				setPeriod (1); // too late
 			} 
 	    }
+	    
 		
 	};
 	
@@ -134,6 +162,17 @@ private:
 
     void setPeriod(long microseconds) ;
     void initTimer(long microseconds) ;
+    unsigned char clockSelectBits;
+    
+    void printTime() {
+		#ifdef DEBUG
+					Serial.print("\n "); 
+					Serial.print(micros()); 
+					Serial.print(": "); 
+					
+		#endif
+		
+	}
     
 };
 
